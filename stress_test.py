@@ -26,11 +26,14 @@ PORT = DEFAULT_PORT
 
 
 def create_connection():
-    context = ssl._create_unverified_context()
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(10)
-    secure = context.wrap_socket(sock)
+    secure = context.wrap_socket(sock, server_hostname=HOST)
     secure.connect((HOST, PORT))
+    secure.settimeout(None)
     return secure
 
 

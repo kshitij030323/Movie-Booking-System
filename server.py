@@ -22,6 +22,29 @@ active_clients = []
 server_running = True
 
 
+def get_all_ips():
+    """Get all available IP addresses on this machine."""
+    ips = []
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            ip = info[4][0]
+            if ip not in ips and ip != "127.0.0.1":
+                ips.append(ip)
+    except Exception:
+        pass
+    # Also try the UDP trick as fallback
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        if ip not in ips and ip != "127.0.0.1":
+            ips.append(ip)
+    except Exception:
+        pass
+    return ips
+
+
 def handle_client(conn, addr):
     print(f"[+] Connected: {addr}")
     active_clients.append(conn)
@@ -133,7 +156,15 @@ def start_server():
     server.bind((HOST, port))
     server.listen(5)
 
+    local_ips = get_all_ips()
     print(f"[*] Reservation Server running on {HOST}:{port} (SSL enabled)")
+    print(f"[*] Local clients:  python client.py 127.0.0.1 {port}")
+    if local_ips:
+        for ip in local_ips:
+            print(f"[*] Remote clients: python client.py {ip} {port}")
+    else:
+        print("[!] Could not detect LAN IP. Run 'ifconfig' to find your IP.")
+    print(f"[*] NOTE: On macOS, allow incoming connections when prompted by firewall")
 
     try:
         while server_running:

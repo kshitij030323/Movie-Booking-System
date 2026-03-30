@@ -14,12 +14,14 @@ Usage:
 
 import socket
 import ssl
+import sys
 import threading
 import time
 import statistics
 
-HOST = "127.0.0.1"
+DEFAULT_HOST = "127.0.0.1"
 PORT = 6000
+HOST = DEFAULT_HOST
 
 
 def create_connection():
@@ -198,8 +200,16 @@ def test_connection_handling():
 # Run all tests
 # ──────────────────────────────────────────────
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        HOST = sys.argv[1]
+    else:
+        host_input = input(f"Enter server IP address (default: {DEFAULT_HOST}): ").strip()
+        if host_input:
+            HOST = host_input
+
     print("=" * 50)
     print("  MOVIE BOOKING SYSTEM - STRESS TEST")
+    print(f"  Target server: {HOST}:{PORT}")
     print("  Make sure server.py is running first!")
     print("=" * 50)
 

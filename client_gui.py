@@ -1,7 +1,6 @@
 import socket
 import ssl
 import sys
-import threading
 import tkinter as tk
 from tkinter import messagebox
 
@@ -10,6 +9,11 @@ DEFAULT_PORT = 65432
 
 TOTAL_SEATS = 100
 COLS = 10
+
+COLOR_AVAILABLE = "#4CAF50"
+COLOR_BOOKED = "#f44336"
+COLOR_YOURS = "#2196F3"
+COLOR_SELECTED = "#FFC107"
 
 
 class ConnectWindow:
@@ -45,7 +49,6 @@ class ConnectWindow:
         self.status_label = tk.Label(frame, text="", font=("Arial", 10), fg="red")
         self.status_label.grid(row=5, column=0, columnspan=2)
 
-        # Handle command-line args
         if len(sys.argv) > 1:
             self.host_entry.delete(0, tk.END)
             self.host_entry.insert(0, sys.argv[1])
@@ -105,6 +108,7 @@ class BookingWindow:
         self.root = root
         self.sock = sock
         self.username = username
+        self.selected_seat = None
         self.root.title(f"Movie Booking - {username} @ {host}:{port}")
 
         # Top bar
@@ -114,19 +118,15 @@ class BookingWindow:
                  bg="#333", fg="white").pack(side="left")
         tk.Label(top, text=f"Server: {host}:{port}", font=("Arial", 10),
                  bg="#333", fg="#aaa").pack(side="left", padx=20)
-        tk.Button(top, text="Refresh", font=("Arial", 10), command=self.refresh_seats).pack(side="right", padx=5)
-        tk.Button(top, text="Disconnect", font=("Arial", 10), bg="#f44336", fg="white",
-                  command=self.disconnect).pack(side="right", padx=5)
 
         # Legend
         legend = tk.Frame(root, pady=5)
         legend.pack(fill="x", padx=10)
-        tk.Label(legend, text="  ", bg="#4CAF50", width=2).pack(side="left", padx=(10, 3))
-        tk.Label(legend, text="Available", font=("Arial", 9)).pack(side="left", padx=(0, 15))
-        tk.Label(legend, text="  ", bg="#f44336", width=2).pack(side="left", padx=(0, 3))
-        tk.Label(legend, text="Booked by others", font=("Arial", 9)).pack(side="left", padx=(0, 15))
-        tk.Label(legend, text="  ", bg="#2196F3", width=2).pack(side="left", padx=(0, 3))
-        tk.Label(legend, text="Your booking", font=("Arial", 9)).pack(side="left")
+        for color, label in [(COLOR_AVAILABLE, "Available"), (COLOR_BOOKED, "Booked"),
+                              (COLOR_YOURS, "Yours"), (COLOR_SELECTED, "Selected")]:
+            tk.Label(legend, text="  ", bg=color, width=2, relief="solid",
+                     borderwidth=1).pack(side="left", padx=(10, 3))
+            tk.Label(legend, text=label, font=("Arial", 9)).pack(side="left", padx=(0, 10))
 
         # Screen label
         screen_frame = tk.Frame(root, pady=5)
@@ -134,9 +134,12 @@ class BookingWindow:
         tk.Label(screen_frame, text="SCREEN", font=("Arial", 12, "bold"), bg="#555", fg="white",
                  pady=4).pack(fill="x")
 
-        # Seat grid
-        self.seat_frame = tk.Frame(root, padx=10, pady=10)
-        self.seat_frame.pack(fill="both", expand=True)
+        # Seat grid with scrollbar
+        grid_container = tk.Frame(root)
+        grid_container.pack(fill="both", expand=True, padx=10, pady=5)
+
+        self.seat_frame = tk.Frame(grid_container)
+        self.seat_frame.pack()
 
         self.seat_buttons = {}
         self.seat_status = {}
@@ -145,16 +148,53 @@ class BookingWindow:
             row = (i - 1) // COLS
             col = (i - 1) % COLS
             btn = tk.Button(self.seat_frame, text=str(i), width=5, height=2,
-                            font=("Arial", 9), relief="raised",
+                            font=("Arial", 9), relief="groove",
+                            highlightthickness=0, takefocus=0, bd=2,
                             command=lambda s=str(i): self.on_seat_click(s))
             btn.grid(row=row, column=col, padx=2, pady=2)
             self.seat_buttons[str(i)] = btn
             self.seat_status[str(i)] = None
 
+        # Action panel at bottom
+        action_frame = tk.Frame(root, bg="#eee", padx=10, pady=10)
+        action_frame.pack(fill="x", side="bottom")
+
         # Status bar
         self.status_var = tk.StringVar(value="Loading seats...")
-        tk.Label(root, textvariable=self.status_var, font=("Arial", 10), fg="#555",
-                 anchor="w", padx=10, pady=5).pack(fill="x", side="bottom")
+        tk.Label(action_frame, textvariable=self.status_var, font=("Arial", 10), fg="#555",
+                 bg="#eee", anchor="w").pack(fill="x")
+
+        # Selection info
+        self.selection_var = tk.StringVar(value="Click a seat to select it")
+        tk.Label(action_frame, textvariable=self.selection_var, font=("Arial", 11, "bold"),
+                 bg="#eee", anchor="w", pady=5).pack(fill="x")
+
+        # Buttons row
+        btn_frame = tk.Frame(action_frame, bg="#eee")
+        btn_frame.pack(fill="x", pady=(5, 0))
+
+        self.book_btn = tk.Button(btn_frame, text="Book Seat", font=("Arial", 11, "bold"),
+                                  bg="#4CAF50", fg="white", width=14, state="disabled",
+                                  highlightthickness=0, takefocus=0,
+                                  command=self.book_selected)
+        self.book_btn.pack(side="left", padx=(0, 10))
+
+        self.cancel_btn = tk.Button(btn_frame, text="Cancel Booking", font=("Arial", 11, "bold"),
+                                    bg="#f44336", fg="white", width=14, state="disabled",
+                                    highlightthickness=0, takefocus=0,
+                                    command=self.cancel_selected)
+        self.cancel_btn.pack(side="left", padx=(0, 10))
+
+        self.refresh_btn = tk.Button(btn_frame, text="Refresh", font=("Arial", 11),
+                                     width=10, highlightthickness=0, takefocus=0,
+                                     command=self.refresh_seats)
+        self.refresh_btn.pack(side="left", padx=(0, 10))
+
+        self.disconnect_btn = tk.Button(btn_frame, text="Disconnect", font=("Arial", 11),
+                                        bg="#777", fg="white", width=10,
+                                        highlightthickness=0, takefocus=0,
+                                        command=self.disconnect)
+        self.disconnect_btn.pack(side="right")
 
         self.root.protocol("WM_DELETE_WINDOW", self.disconnect)
         self.refresh_seats()
@@ -191,45 +231,105 @@ class BookingWindow:
             btn = self.seat_buttons[seat_num]
             if status_text == "Available":
                 self.seat_status[seat_num] = None
-                btn.config(bg="#4CAF50", fg="white", activebackground="#45a049")
+                btn.config(bg=COLOR_AVAILABLE, fg="white",
+                           activebackground=COLOR_AVAILABLE, activeforeground="white")
             elif f"Booked by {self.username}" == status_text:
                 self.seat_status[seat_num] = self.username
-                btn.config(bg="#2196F3", fg="white", activebackground="#1976D2")
+                btn.config(bg=COLOR_YOURS, fg="white",
+                           activebackground=COLOR_YOURS, activeforeground="white")
                 booked_count += 1
             else:
                 booker = status_text.replace("Booked by ", "")
                 self.seat_status[seat_num] = booker
-                btn.config(bg="#f44336", fg="white", activebackground="#d32f2f")
+                btn.config(bg=COLOR_BOOKED, fg="white",
+                           activebackground=COLOR_BOOKED, activeforeground="white")
                 booked_count += 1
+
+        # Re-highlight selected seat if still valid
+        if self.selected_seat and self.selected_seat in self.seat_buttons:
+            self.seat_buttons[self.selected_seat].config(
+                bg=COLOR_SELECTED, fg="black",
+                activebackground=COLOR_SELECTED, activeforeground="black")
+            self.update_action_buttons()
 
         available = TOTAL_SEATS - booked_count
         self.status_var.set(f"Available: {available} | Booked: {booked_count} | Total: {TOTAL_SEATS}")
 
     def on_seat_click(self, seat_num):
-        current = self.seat_status.get(seat_num)
-
-        if current is None:
-            # Book it
-            response = self.send_command(f"BOOK {seat_num} {self.username}")
-            if "SUCCESS" in response:
-                self.status_var.set(f"Booked seat {seat_num}")
+        # Deselect previous
+        if self.selected_seat and self.selected_seat in self.seat_buttons:
+            prev = self.selected_seat
+            status = self.seat_status.get(prev)
+            btn = self.seat_buttons[prev]
+            if status is None:
+                btn.config(bg=COLOR_AVAILABLE, fg="white",
+                           activebackground=COLOR_AVAILABLE, activeforeground="white")
+            elif status == self.username:
+                btn.config(bg=COLOR_YOURS, fg="white",
+                           activebackground=COLOR_YOURS, activeforeground="white")
             else:
-                messagebox.showwarning("Booking Failed", response.strip())
-            self.refresh_seats()
+                btn.config(bg=COLOR_BOOKED, fg="white",
+                           activebackground=COLOR_BOOKED, activeforeground="white")
 
-        elif current == self.username:
-            # Cancel own booking
-            if messagebox.askyesno("Cancel Booking", f"Cancel your booking for Seat {seat_num}?"):
-                response = self.send_command(f"CANCEL {seat_num} {self.username}")
-                if "SUCCESS" in response:
-                    self.status_var.set(f"Cancelled seat {seat_num}")
-                else:
-                    messagebox.showwarning("Cancel Failed", response.strip())
-                self.refresh_seats()
+        # Select new
+        self.selected_seat = seat_num
+        self.seat_buttons[seat_num].config(
+            bg=COLOR_SELECTED, fg="black",
+            activebackground=COLOR_SELECTED, activeforeground="black")
 
+        self.update_action_buttons()
+
+    def update_action_buttons(self):
+        seat = self.selected_seat
+        if not seat:
+            self.book_btn.config(state="disabled")
+            self.cancel_btn.config(state="disabled")
+            self.selection_var.set("Click a seat to select it")
+            return
+
+        status = self.seat_status.get(seat)
+        if status is None:
+            self.selection_var.set(f"Seat {seat} selected - Available")
+            self.book_btn.config(state="normal")
+            self.cancel_btn.config(state="disabled")
+        elif status == self.username:
+            self.selection_var.set(f"Seat {seat} selected - Booked by you")
+            self.book_btn.config(state="disabled")
+            self.cancel_btn.config(state="normal")
         else:
-            # Someone else's seat
-            messagebox.showinfo("Seat Taken", f"Seat {seat_num} is booked by {current}")
+            self.selection_var.set(f"Seat {seat} selected - Booked by {status}")
+            self.book_btn.config(state="disabled")
+            self.cancel_btn.config(state="disabled")
+
+    def book_selected(self):
+        seat = self.selected_seat
+        if not seat:
+            return
+
+        response = self.send_command(f"BOOK {seat} {self.username}")
+        if "SUCCESS" in response:
+            self.status_var.set(f"Booked seat {seat}")
+        else:
+            messagebox.showwarning("Booking Failed", response.strip())
+
+        self.selected_seat = None
+        self.refresh_seats()
+        self.update_action_buttons()
+
+    def cancel_selected(self):
+        seat = self.selected_seat
+        if not seat:
+            return
+
+        response = self.send_command(f"CANCEL {seat} {self.username}")
+        if "SUCCESS" in response:
+            self.status_var.set(f"Cancelled seat {seat}")
+        else:
+            messagebox.showwarning("Cancel Failed", response.strip())
+
+        self.selected_seat = None
+        self.refresh_seats()
+        self.update_action_buttons()
 
     def disconnect(self):
         try:
@@ -242,7 +342,7 @@ class BookingWindow:
 
 def open_booking_window(sock, username, host, port):
     root = tk.Tk()
-    root.geometry("620x700")
+    root.geometry("640x780")
     BookingWindow(root, sock, username, host, port)
     root.mainloop()
 

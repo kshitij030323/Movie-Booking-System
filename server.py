@@ -22,6 +22,18 @@ active_clients = []
 server_running = True
 
 
+def get_local_ip():
+    """Get the machine's LAN IP address."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+
 def handle_client(conn, addr):
     print(f"[+] Connected: {addr}")
     active_clients.append(conn)
@@ -133,7 +145,10 @@ def start_server():
     server.bind((HOST, port))
     server.listen(5)
 
+    local_ip = get_local_ip()
     print(f"[*] Reservation Server running on {HOST}:{port} (SSL enabled)")
+    print(f"[*] Local clients:  python client.py 127.0.0.1 {port}")
+    print(f"[*] Remote clients: python client.py {local_ip} {port}")
 
     try:
         while server_running:

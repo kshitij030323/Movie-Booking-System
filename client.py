@@ -7,10 +7,14 @@ DEFAULT_PORT = 65432
 
 
 def connect_to_server(host, port):
-    context = ssl._create_unverified_context()
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    secure_socket = context.wrap_socket(sock)
+    sock.settimeout(10)
+    secure_socket = context.wrap_socket(sock, server_hostname=host)
     secure_socket.connect((host, port))
+    secure_socket.settimeout(None)
     return secure_socket
 
 
@@ -28,11 +32,17 @@ def main():
     except ConnectionRefusedError:
         print(f"Error: Server is not running at {host}:{port}. Start the server first.")
         return
-    except (socket.timeout, OSError) as e:
+    except (socket.timeout, TimeoutError):
+        print(f"Error: Connection timed out to {host}:{port}.")
+        print("  - Check that the server IP is correct")
+        print("  - Check that both machines are on the same network")
+        print(f"  - Check that port {port} is not blocked by firewall")
+        return
+    except OSError as e:
         print(f"Error: Could not connect to server at {host}:{port} - {e}")
         return
 
-    print("Connected to Movie Reservation Server (Secure)")
+    print(f"Connected to Movie Reservation Server at {host}:{port} (Secure)")
 
     while True:
         print("\n===== Movie Seat Booking =====")

@@ -4,52 +4,76 @@ import ssl
 HOST = "127.0.0.1"
 PORT = 6000
 
-# Create SSL context without certificate verification
-context = ssl._create_unverified_context()
 
-# Create TCP socket
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def connect_to_server():
+    context = ssl._create_unverified_context()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    secure_socket = context.wrap_socket(sock)
+    secure_socket.connect((HOST, PORT))
+    return secure_socket
 
-# Wrap socket with SSL
-secure_socket = context.wrap_socket(sock)
 
-# Connect to server
-secure_socket.connect((HOST, PORT))
+def main():
+    try:
+        secure_socket = connect_to_server()
+    except ConnectionRefusedError:
+        print("Error: Server is not running. Start the server first.")
+        return
 
-print("Connected to reservation server")
+    print("Connected to Movie Reservation Server (Secure)")
 
-while True:
+    while True:
+        print("\n===== Movie Seat Booking =====")
+        print("1. Book a Seat")
+        print("2. Cancel Booking")
+        print("3. View All Seats")
+        print("4. Exit")
+        print("==============================")
 
-    print("\n1. Book Seat")
-    print("2. View Seats")
-    print("3. Exit")
+        choice = input("Enter choice (1-4): ").strip()
 
-    choice = input("Enter choice: ")
+        if choice == "1":
+            seat = input("Enter seat number (1-5): ").strip()
+            name = input("Enter your name: ").strip()
 
-    if choice == "1":
+            if not seat or not name:
+                print("Seat number and name cannot be empty.")
+                continue
+            if " " in name:
+                print("Name cannot contain spaces.")
+                continue
 
-        seat = input("Seat number: ")
-        user = input("Your name: ")
+            secure_socket.send(f"BOOK {seat} {name}".encode())
+            response = secure_socket.recv(1024).decode()
+            print(f"\nServer: {response}")
 
-        msg = f"BOOK {seat} {user}"
-        secure_socket.send(msg.encode())
+        elif choice == "2":
+            seat = input("Enter seat number to cancel (1-5): ").strip()
+            name = input("Enter your name: ").strip()
 
-        response = secure_socket.recv(1024)
-        print(response.decode())
+            if not seat or not name:
+                print("Seat number and name cannot be empty.")
+                continue
 
-    elif choice == "2":
+            secure_socket.send(f"CANCEL {seat} {name}".encode())
+            response = secure_socket.recv(1024).decode()
+            print(f"\nServer: {response}")
 
-        secure_socket.send(b"VIEW")
+        elif choice == "3":
+            secure_socket.send(b"VIEW")
+            response = secure_socket.recv(1024).decode()
+            print(f"\nCurrent Seat Status:\n{response}")
 
-        response = secure_socket.recv(1024)
-        print(response.decode())
+        elif choice == "4":
+            secure_socket.send(b"EXIT")
+            print("Disconnected from server.")
+            break
 
-    elif choice == "3":
+        else:
+            print("Invalid choice. Please enter 1-4.")
 
-        secure_socket.send(b"EXIT")
-        break
+    secure_socket.close()
 
-    else:
-        print("Invalid choice")
 
-secure_socket.close()
+if __name__ == "__main__":
+    main()

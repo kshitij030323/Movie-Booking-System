@@ -31,8 +31,8 @@ def create_connection():
     context.verify_mode = ssl.CERT_NONE
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(10)
+    sock.connect((HOST, PORT))
     secure = context.wrap_socket(sock, server_hostname=HOST)
-    secure.connect((HOST, PORT))
     secure.settimeout(None)
     return secure
 

@@ -12,8 +12,8 @@ def connect_to_server(host, port):
     context.verify_mode = ssl.CERT_NONE
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(10)
+    sock.connect((host, port))
     secure_socket = context.wrap_socket(sock, server_hostname=host)
-    secure_socket.connect((host, port))
     secure_socket.settimeout(None)
     return secure_socket
 

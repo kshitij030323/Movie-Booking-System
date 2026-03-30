@@ -9,7 +9,7 @@ Tests:
   5. Scalability          - increasing number of clients
 
 Usage:
-  python stress_test.py [server_ip]
+  python stress_test.py [server_ip] [port]
 """
 
 import socket
@@ -20,8 +20,9 @@ import time
 import statistics
 
 DEFAULT_HOST = "127.0.0.1"
-PORT = 6000
+DEFAULT_PORT = 65432
 HOST = DEFAULT_HOST
+PORT = DEFAULT_PORT
 
 
 def create_connection():
@@ -275,10 +276,8 @@ def test_connection_handling():
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         HOST = sys.argv[1]
-    else:
-        host_input = input(f"Enter server IP address (default: {DEFAULT_HOST}): ").strip()
-        if host_input:
-            HOST = host_input
+    if len(sys.argv) > 2:
+        PORT = int(sys.argv[2])
 
     print("=" * 50)
     print("  MOVIE BOOKING SYSTEM - STRESS TEST")

@@ -3,32 +3,33 @@ import ssl
 import sys
 
 DEFAULT_HOST = "127.0.0.1"
-PORT = 6000
+DEFAULT_PORT = 65432
 
 
-def connect_to_server(host):
+def connect_to_server(host, port):
     context = ssl._create_unverified_context()
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     secure_socket = context.wrap_socket(sock)
-    secure_socket.connect((host, PORT))
+    secure_socket.connect((host, port))
     return secure_socket
 
 
 def main():
+    host = DEFAULT_HOST
+    port = DEFAULT_PORT
+
     if len(sys.argv) > 1:
         host = sys.argv[1]
-    else:
-        host = input(f"Enter server IP address (default: {DEFAULT_HOST}): ").strip()
-        if not host:
-            host = DEFAULT_HOST
+    if len(sys.argv) > 2:
+        port = int(sys.argv[2])
 
     try:
-        secure_socket = connect_to_server(host)
+        secure_socket = connect_to_server(host, port)
     except ConnectionRefusedError:
-        print(f"Error: Server is not running at {host}:{PORT}. Start the server first.")
+        print(f"Error: Server is not running at {host}:{port}. Start the server first.")
         return
     except (socket.timeout, OSError) as e:
-        print(f"Error: Could not connect to server at {host}:{PORT} - {e}")
+        print(f"Error: Could not connect to server at {host}:{port} - {e}")
         return
 
     print("Connected to Movie Reservation Server (Secure)")

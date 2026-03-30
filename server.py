@@ -9,13 +9,7 @@ HOST = '0.0.0.0'
 DEFAULT_PORT = 65432
 
 # seat database
-seats = {
-    "1": None,
-    "2": None,
-    "3": None,
-    "4": None,
-    "5": None
-}
+seats = {str(i): None for i in range(1, 101)}
 
 lock = threading.Lock()
 active_clients = []
@@ -154,7 +148,7 @@ def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((HOST, port))
-    server.listen(5)
+    server.listen(20)
 
     local_ips = get_all_ips()
     print(f"[*] Reservation Server running on {HOST}:{port} (SSL enabled)")

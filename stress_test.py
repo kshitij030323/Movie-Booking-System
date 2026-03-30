@@ -39,7 +39,7 @@ def create_connection():
 
 def send_command(conn, cmd):
     conn.send(cmd.encode())
-    return conn.recv(1024).decode()
+    return conn.recv(4096).decode()
 
 
 def check_server_reachable():

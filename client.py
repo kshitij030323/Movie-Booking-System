@@ -55,7 +55,7 @@ def main():
         choice = input("Enter choice (1-4): ").strip()
 
         if choice == "1":
-            seat = input("Enter seat number (1-5): ").strip()
+            seat = input("Enter seat number (1-100): ").strip()
             name = input("Enter your name: ").strip()
 
             if not seat or not name:
@@ -66,11 +66,11 @@ def main():
                 continue
 
             secure_socket.send(f"BOOK {seat} {name}".encode())
-            response = secure_socket.recv(1024).decode()
+            response = secure_socket.recv(4096).decode()
             print(f"\nServer: {response}")
 
         elif choice == "2":
-            seat = input("Enter seat number to cancel (1-5): ").strip()
+            seat = input("Enter seat number to cancel (1-100): ").strip()
             name = input("Enter your name: ").strip()
 
             if not seat or not name:
@@ -78,12 +78,12 @@ def main():
                 continue
 
             secure_socket.send(f"CANCEL {seat} {name}".encode())
-            response = secure_socket.recv(1024).decode()
+            response = secure_socket.recv(4096).decode()
             print(f"\nServer: {response}")
 
         elif choice == "3":
             secure_socket.send(b"VIEW")
-            response = secure_socket.recv(1024).decode()
+            response = secure_socket.recv(4096).decode()
             print(f"\nCurrent Seat Status:\n{response}")
 
         elif choice == "4":

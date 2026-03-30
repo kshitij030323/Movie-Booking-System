@@ -6,7 +6,7 @@ import sys
 import time
 
 HOST = '0.0.0.0'
-PORT = 6000
+DEFAULT_PORT = 65432
 
 # seat database
 seats = {
@@ -119,6 +119,10 @@ def shutdown_server(sig, frame):
 
 
 def start_server():
+    port = DEFAULT_PORT
+    if len(sys.argv) > 1:
+        port = int(sys.argv[1])
+
     signal.signal(signal.SIGINT, shutdown_server)
 
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -126,10 +130,10 @@ def start_server():
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind((HOST, PORT))
+    server.bind((HOST, port))
     server.listen(5)
 
-    print(f"[*] Reservation Server running on {HOST}:{PORT} (SSL enabled)")
+    print(f"[*] Reservation Server running on {HOST}:{port} (SSL enabled)")
 
     try:
         while server_running:
